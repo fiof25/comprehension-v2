@@ -3,6 +3,8 @@ import React, { useRef, useEffect, useState } from 'react';
 const HomePage = ({ onStartLearning, onSelectActivity }) => {
   const fileInputRef = useRef(null);
   const [activities, setActivities] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
 
   useEffect(() => {
     fetch('/api/activities')
@@ -13,16 +15,56 @@ const HomePage = ({ onStartLearning, onSelectActivity }) => {
       .catch(err => console.error('Failed to load activities:', err));
   }, []);
 
+  const uploadPdf = async (file) => {
+    if (!file || file.type !== 'application/pdf') {
+      setUploadError('Please upload a PDF file.');
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadError('');
+
+    try {
+      const formData = new FormData();
+      formData.append('pdf', file);
+
+      const res = await fetch('/api/upload-pdf', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        let errorMsg = 'Upload failed';
+        try {
+          const err = await res.json();
+          errorMsg = err.error || errorMsg;
+        } catch { /* response wasn't JSON */ }
+        throw new Error(errorMsg);
+      }
+
+      const data = await res.json();
+      if (!data.activities || data.activities.length === 0) {
+        throw new Error('No activities were generated. Please try a different PDF.');
+      }
+      onSelectActivity(data.activities);
+    } catch (err) {
+      console.error('Upload error:', err);
+      setUploadError(err.message || 'Failed to process PDF. Please try again.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleFileChange = (e) => {
     if (e.target.files.length > 0) {
-      onStartLearning();
+      uploadPdf(e.target.files[0]);
     }
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
     if (e.dataTransfer.files.length > 0) {
-      onStartLearning();
+      uploadPdf(e.dataTransfer.files[0]);
     }
   };
 
@@ -56,43 +98,71 @@ const HomePage = ({ onStartLearning, onSelectActivity }) => {
           type="file"
           ref={fileInputRef}
           onChange={handleFileChange}
-          accept=".pdf,.mp3,.mp4"
+          accept=".pdf"
           className="hidden"
+          disabled={isUploading}
         />
         <div
-          className="relative z-10 mx-auto mt-6 w-[637px] bg-white/10 hover:bg-white/20 rounded p-10 flex flex-col items-center gap-5 cursor-pointer transition-all duration-200 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)] hover:backdrop-blur-sm"
-          onDrop={handleDrop}
+          className={`relative z-10 mx-auto mt-6 w-[637px] rounded p-10 flex flex-col items-center gap-5 transition-all duration-200 ${
+            isUploading
+              ? 'bg-white/5 cursor-wait'
+              : 'bg-white/10 hover:bg-white/20 cursor-pointer hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)] hover:backdrop-blur-sm'
+          }`}
+          onDrop={isUploading ? undefined : handleDrop}
           onDragOver={(e) => e.preventDefault()}
-          onClick={() => fileInputRef.current?.click()}
+          onClick={isUploading ? undefined : () => fileInputRef.current?.click()}
         >
-          {/* Upload icon */}
-          <svg className="w-[40px] h-[40px]" viewBox="68 34 42 42" fill="none">
-            <path d="M82.141 45.977L86.312 41.804L86.344 62.251C86.344 63.494 87.351 64.501 88.594 64.501C89.836 64.501 90.844 63.494 90.844 62.251L90.812 41.83L94.96 45.977C95.823 46.871 97.247 46.896 98.141 46.032C99.035 45.169 99.059 43.745 98.196 42.851C98.178 42.832 98.16 42.814 98.141 42.796L93.323 37.978C90.687 35.342 86.414 35.342 83.778 37.978L83.777 37.978L78.96 42.796C78.096 43.69 78.121 45.114 79.015 45.977C79.887 46.819 81.269 46.819 82.141 45.977Z" fill="white"/>
-            <path d="M104.249 57.75C103.006 57.75 101.999 58.757 101.999 60V66.886C101.998 67.225 101.724 67.499 101.385 67.5H75.613C75.275 67.499 75.001 67.225 75 66.886V60C75 58.757 73.992 57.75 72.75 57.75C71.507 57.75 70.5 58.757 70.5 60V66.886C70.503 69.709 72.791 71.996 75.613 72H101.385C104.208 71.996 106.495 69.709 106.498 66.886V60C106.498 58.757 105.491 57.75 104.249 57.75Z" fill="white"/>
-          </svg>
+          {isUploading ? (
+            <>
+              {/* Loading spinner */}
+              <svg className="w-[40px] h-[40px] animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="white" strokeWidth="3" />
+                <path className="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" fill="white" />
+              </svg>
+              <div className="text-center text-white">
+                <p className="text-xl font-medium font-karla">Generating activities...</p>
+                <p className="text-sm font-mulish mt-1">AI is reading your PDF and creating discussion questions. This may take 15-30 seconds.</p>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Upload icon */}
+              <svg className="w-[40px] h-[40px]" viewBox="68 34 42 42" fill="none">
+                <path d="M82.141 45.977L86.312 41.804L86.344 62.251C86.344 63.494 87.351 64.501 88.594 64.501C89.836 64.501 90.844 63.494 90.844 62.251L90.812 41.83L94.96 45.977C95.823 46.871 97.247 46.896 98.141 46.032C99.035 45.169 99.059 43.745 98.196 42.851C98.178 42.832 98.16 42.814 98.141 42.796L93.323 37.978C90.687 35.342 86.414 35.342 83.778 37.978L83.777 37.978L78.96 42.796C78.096 43.69 78.121 45.114 79.015 45.977C79.887 46.819 81.269 46.819 82.141 45.977Z" fill="white"/>
+                <path d="M104.249 57.75C103.006 57.75 101.999 58.757 101.999 60V66.886C101.998 67.225 101.724 67.499 101.385 67.5H75.613C75.275 67.499 75.001 67.225 75 66.886V60C75 58.757 73.992 57.75 72.75 57.75C71.507 57.75 70.5 58.757 70.5 60V66.886C70.503 69.709 72.791 71.996 75.613 72H101.385C104.208 71.996 106.495 69.709 106.498 66.886V60C106.498 58.757 105.491 57.75 104.249 57.75Z" fill="white"/>
+              </svg>
 
-          <div className="text-center text-white">
-            <p className="text-xl font-medium font-karla">Drop your lecture content here</p>
-            <p className="text-sm font-mulish mt-1">Supported formates: PDF, MP3, MP4</p>
-          </div>
+              <div className="text-center text-white">
+                <p className="text-xl font-medium font-karla">Drop your lecture content here</p>
+                <p className="text-sm font-mulish mt-1">Supported format: PDF</p>
+              </div>
 
-          {/* Divider */}
-          <div className="w-full flex items-center gap-4 opacity-75">
-            <div className="flex-1 h-px bg-white" />
-            <span className="text-white text-sm font-mulish">or</span>
-            <div className="flex-1 h-px bg-white" />
-          </div>
+              {/* Divider */}
+              <div className="w-full flex items-center gap-4 opacity-75">
+                <div className="flex-1 h-px bg-white" />
+                <span className="text-white text-sm font-mulish">or</span>
+                <div className="flex-1 h-px bg-white" />
+              </div>
 
-          {/* Browse button */}
-          <button
-            onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-            className="bg-[#0c8e3f] hover:bg-[#0a7534] transition-colors text-white px-10 py-4 rounded-md flex items-center gap-4 text-lg font-mulish"
-          >
-            <svg className="w-6 h-6" viewBox="0 0 24 28" fill="none">
-              <path d="M14.191 0.775H3.305C2.385 0.775 1.503 1.141 0.852 1.791C0.201 2.442 -0.164 3.324 -0.164 4.244V28.528H22.963V9.548L14.191 0.775ZM14.869 4.723L19.015 8.87H14.869V4.723ZM2.149 26.215V4.244C2.149 3.938 2.271 3.644 2.487 3.427C2.704 3.21 2.998 3.088 3.305 3.088H12.556V11.183H20.651V26.215H2.149Z" fill="white"/>
-            </svg>
-            Browse Files
-          </button>
+              {/* Browse button */}
+              <button
+                onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                className="bg-[#0c8e3f] hover:bg-[#0a7534] transition-colors text-white px-10 py-4 rounded-md flex items-center gap-4 text-lg font-mulish"
+              >
+                <svg className="w-6 h-6" viewBox="0 0 24 28" fill="none">
+                  <path d="M14.191 0.775H3.305C2.385 0.775 1.503 1.141 0.852 1.791C0.201 2.442 -0.164 3.324 -0.164 4.244V28.528H22.963V9.548L14.191 0.775ZM14.869 4.723L19.015 8.87H14.869V4.723ZM2.149 26.215V4.244C2.149 3.938 2.271 3.644 2.487 3.427C2.704 3.21 2.998 3.088 3.305 3.088H12.556V11.183H20.651V26.215H2.149Z" fill="white"/>
+                </svg>
+                Browse Files
+              </button>
+            </>
+          )}
+
+          {/* Error message */}
+          {uploadError && (
+            <div className="w-full bg-red-500/20 border border-red-400/50 rounded px-4 py-2 text-center">
+              <p className="text-red-200 text-sm font-mulish">{uploadError}</p>
+            </div>
+          )}
         </div>
       </div>
 

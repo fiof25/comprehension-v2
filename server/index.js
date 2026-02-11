@@ -5,6 +5,10 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import multer from 'multer';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const pdfParse = require('pdf-parse');
 import { JAMIE_PROMPT, THOMAS_PROMPT, COLLABORATIVE_SYSTEM_PROMPT } from './characters.js';
 import { DISCUSSION_ORCHESTRATOR_PROMPT } from './agents/discussionOrchestrator.js';
 import { loadAllActivities, loadActivity } from './activityParser.js';
@@ -17,6 +21,16 @@ const port = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
+
+// Multer config for PDF uploads — store in memory, then save to public/assets/
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 20 * 1024 * 1024 }, // 20MB max
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype === 'application/pdf') cb(null, true);
+        else cb(new Error('Only PDF files are allowed'));
+    },
+});
 
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok' });
@@ -108,6 +122,182 @@ Output ONLY the markdown file content, nothing else.`;
     } catch (error) {
         console.error('Error generating activity:', error);
         res.status(500).json({ error: 'Failed to generate activity' });
+    }
+});
+
+// --- Upload PDF and generate multiple activities ---
+
+const QUESTION_TYPES = [
+    {
+        type: 'comprehension',
+        instruction: 'Create a comprehension question that asks students to identify and explain key facts, details, or concepts from the reading. Focus on WHAT happened or WHAT the text describes.',
+    },
+    {
+        type: 'comparison',
+        instruction: 'Create a comparison question that asks students to identify similarities and differences between two or more things discussed in the reading (e.g. regions, groups, causes, effects).',
+    },
+    {
+        type: 'analysis',
+        instruction: 'Create an analysis question that asks students to explore WHY something happened, evaluate causes and effects, or make connections between ideas in the reading.',
+    },
+];
+
+async function generateActivityFromText(readingText, title, pdfPath, questionType) {
+    const templatePath = path.join(__dirname, '..', 'activities', 'TEMPLATE.md');
+    const template = fs.readFileSync(templatePath, 'utf8');
+
+    const typeInfo = QUESTION_TYPES.find(q => q.type === questionType) || QUESTION_TYPES[0];
+
+    const prompt = `You are an educational content designer. Given the following reading text, generate a complete activity markdown file following the exact template format below.
+
+TEMPLATE FORMAT:
+${template}
+
+READING TEXT:
+${readingText}
+
+TITLE: ${title}
+PDF PATH: ${pdfPath}
+
+QUESTION TYPE: ${typeInfo.type}
+${typeInfo.instruction}
+
+Generate a complete activity markdown file. Requirements:
+
+LENGTH & STYLE — follow these examples closely:
+- Question: ONE short sentence, ~10-15 words max. Example: "How did the drought affect forests and other non-farming communities across Canada?"
+- Character opinions: 2-3 short sentences each, ~25-40 words. Example: "The drought affected crops like wheat, canola, and barley. People at the ranch faced barren pastures and sold off cattle, and turned to irrigation but due to scarce water supplies it became too expensive."
+- Initial messages: 1-2 casual short sentences, ~15-25 words. Jamie example: "Hi! Thanks so much for helping us! I keep thinking about the poor dehydrated crops... but Thomas keeps shutting it down." Thomas example: "Jamie keeps mentioning farms, but I don't think that's relevant. I need some strong evidence. What did the reading say?"
+- Keep ALL text conversational, brief, and age-appropriate for students.
+
+CONTENT:
+- The question MUST be of type "${typeInfo.type}" — follow the instruction above
+- Use tag: ${typeInfo.type.charAt(0).toUpperCase() + typeInfo.type.slice(1)} in the Meta section
+- Set the pdf field in frontmatter to exactly: "${pdfPath}"
+- Set the title in frontmatter to exactly: "${title}"
+- Identify 5-7 key themes/facts students should address for THIS specific question
+- Write realistic character positions (Jamie = enthusiastic but incomplete/off-track, Thomas = analytical but incomplete — they should DISAGREE or have different incomplete perspectives)
+- Write natural opening messages — Jamie should be friendly and bring up something slightly off-topic, Thomas should be skeptical and demand evidence
+- Include relevant grading keywords (keywords_content for themes, keywords_evidence for specific facts/numbers)
+- Keep the checklist as-is (analogy, example, story)
+- Use the exact markdown format from the template (YAML frontmatter + sections)
+- Do NOT include HTML comments from the template
+- Use a relevant thumbnail path: "/assets/${title.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_banner.png"
+
+Output ONLY the markdown file content, nothing else.`;
+
+    const result = await model.generateContent(prompt);
+    return result.response.text().replace(/```markdown|```/g, '').trim();
+}
+
+app.post('/api/upload-pdf', upload.single('pdf'), async (req, res) => {
+    console.log('[upload-pdf] Request received, file:', req.file?.originalname, 'size:', req.file?.size);
+
+    if (!req.file) {
+        return res.status(400).json({ error: 'No PDF file uploaded' });
+    }
+
+    try {
+        // 1. Generate slug from filename
+        const originalName = path.basename(req.file.originalname, '.pdf');
+        const slug = originalName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+        // Check for existing hardcoded activities (e.g. Drought_Reading.pdf)
+        const HARDCODED_ACTIVITIES = {
+            'drought-reading': ['drought-q1-comprehension', 'drought-q2-comparison'],
+        };
+
+        if (HARDCODED_ACTIVITIES[slug]) {
+            console.log(`[upload-pdf] Using hardcoded activities for "${slug}"`);
+            const activities = HARDCODED_ACTIVITIES[slug]
+                .map(s => loadActivity(s))
+                .filter(Boolean);
+
+            if (activities.length > 0) {
+                const summaries = activities.map(a => ({
+                    slug: a.slug,
+                    title: a.title,
+                    thumbnail: a.thumbnail,
+                    topics: a.topics,
+                    questionText: a.question.text,
+                    tag: a.question.tag,
+                    askedBy: a.question.askedBy,
+                }));
+                return res.json({ activities: summaries, pdfPath: activities[0].pdf });
+            }
+        }
+
+        const pdfFilename = `${slug}.pdf`;
+        const pdfPath = `/assets/${pdfFilename}`;
+
+        // 2. Save PDF to public/assets/
+        const assetsDir = path.join(__dirname, '..', 'public', 'assets');
+        if (!fs.existsSync(assetsDir)) fs.mkdirSync(assetsDir, { recursive: true });
+        fs.writeFileSync(path.join(assetsDir, pdfFilename), req.file.buffer);
+        console.log('[upload-pdf] PDF saved to', pdfPath);
+
+        // 3. Extract text from PDF
+        const pdfData = await pdfParse(req.file.buffer);
+        const readingText = pdfData.text;
+        console.log('[upload-pdf] Extracted text length:', readingText?.length);
+
+        if (!readingText || readingText.trim().length < 50) {
+            return res.status(400).json({ error: 'Could not extract enough text from PDF. The file may be image-based or empty.' });
+        }
+
+        // 4. Generate a clean title from filename
+        const title = originalName
+            .replace(/[_-]+/g, ' ')
+            .replace(/\b\w/g, c => c.toUpperCase());
+
+        // 5. Generate 2-3 activities in parallel
+        console.log('[upload-pdf] Generating 3 activities for:', title);
+        const typesToGenerate = QUESTION_TYPES.slice(0, 3);
+        const results = await Promise.allSettled(
+            typesToGenerate.map(qt => generateActivityFromText(readingText, title, pdfPath, qt.type))
+        );
+
+        const activities = [];
+        for (let i = 0; i < results.length; i++) {
+            if (results[i].status !== 'fulfilled') {
+                console.error(`[upload-pdf] Failed to generate ${typesToGenerate[i].type}:`, results[i].reason?.message || results[i].reason);
+                continue;
+            }
+
+            const generatedMd = results[i].value;
+            const activitySlug = `${slug}-q${i + 1}-${typesToGenerate[i].type}`;
+            const filePath = path.join(__dirname, '..', 'activities', `${activitySlug}.md`);
+            fs.writeFileSync(filePath, generatedMd, 'utf8');
+            console.log(`[upload-pdf] Saved activity: ${activitySlug}.md`);
+
+            try {
+                const activity = loadActivity(activitySlug);
+                if (activity) activities.push(activity);
+            } catch (parseErr) {
+                console.error(`[upload-pdf] Failed to parse ${activitySlug}:`, parseErr.message);
+            }
+        }
+
+        if (activities.length === 0) {
+            return res.status(500).json({ error: 'Failed to generate any activities from the PDF' });
+        }
+
+        // Return summaries matching the format used by GET /api/activities
+        const summaries = activities.map(a => ({
+            slug: a.slug,
+            title: a.title,
+            thumbnail: a.thumbnail,
+            topics: a.topics,
+            questionText: a.question.text,
+            tag: a.question.tag,
+            askedBy: a.question.askedBy,
+        }));
+
+        console.log(`[upload-pdf] Success! Generated ${summaries.length} activities`);
+        res.json({ activities: summaries, pdfPath });
+    } catch (error) {
+        console.error('[upload-pdf] Error:', error.message || error);
+        res.status(500).json({ error: 'Failed to process PDF: ' + (error.message || 'Unknown error') });
     }
 });
 

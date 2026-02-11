@@ -4,11 +4,12 @@
   "framework": "vite",
   "functions": {
     "api/*.js": {
-      "includeFiles": "characters/**/*.md"
+      "includeFiles": "characters/**/*.md,activities/TEMPLATE.md"
     }
   },
   "rewrites": [
     { "source": "/api/chat", "destination": "/api/chat" },
-    { "source": "/api/check-answer", "destination": "/api/check-answer" }
+    { "source": "/api/check-answer", "destination": "/api/check-answer" },
+    { "source": "/api/upload-pdf", "destination": "/api/upload-pdf" }
   ]
 }

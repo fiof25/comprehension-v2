@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ArrowLeft, Pencil, FileText, BookOpen } from 'lucide-react';
 import Chat from './components/Chat';
 import QuestionSection from './components/QuestionSection';
@@ -16,6 +16,35 @@ const StarIcon = () => (
     />
   </svg>
 );
+
+const AutoScaleText = ({ children, maxFontSize = 19, minFontSize = 13 }) => {
+  const textRef = useRef(null);
+  const [fontSize, setFontSize] = useState(maxFontSize);
+  const maxHeight = 56; // inner content height (80px container - 24px padding)
+
+  useEffect(() => {
+    const el = textRef.current;
+    if (!el) return;
+
+    // Start at max and shrink until it fits
+    let size = maxFontSize;
+    el.style.fontSize = `${size}px`;
+
+    while (size > minFontSize && el.scrollHeight > maxHeight) {
+      size -= 1;
+      el.style.fontSize = `${size}px`;
+    }
+    setFontSize(size);
+  }, [children, maxFontSize, minFontSize]);
+
+  return (
+    <div className="bg-[#fafafa] border border-[#d7d7d7] rounded" style={{ padding: '12px 14px', height: '80px', overflow: 'hidden' }}>
+      <h2 ref={textRef} className="font-semibold font-karla text-black" style={{ fontSize: `${fontSize}px`, lineHeight: 1.37 }}>
+        {children}
+      </h2>
+    </div>
+  );
+};
 
 function App() {
   const [activeStep, setActiveStep] = useState('home'); // 'home' | 'loading' | 'questionSelect' | 'question' | 'results' | 'results2'
@@ -289,9 +318,7 @@ function App() {
             {/* Question info header */}
             <div className="p-6 border-b border-black/35 flex gap-4">
               <div className="flex-1 flex flex-col gap-[11px]">
-                <div className="bg-[#fafafa] border border-[#d7d7d7] rounded" style={{ padding: '12px 14px' }}>
-                  <h2 className="font-semibold font-karla text-black" style={{ fontSize: '19px', lineHeight: '26px' }}>&ldquo;{questionText}&rdquo;</h2>
-                </div>
+                <AutoScaleText>&ldquo;{questionText}&rdquo;</AutoScaleText>
                 <p className="font-mulish text-black/60" style={{ fontSize: '13px', lineHeight: '18px' }}>Thomas and Jamie have different stances on this question. Try to clarify their concerns and develop your final answer.</p>
               </div>
               {/* Learning checklist */}
