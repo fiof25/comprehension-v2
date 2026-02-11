@@ -1,6 +1,29 @@
 import React from 'react';
 import { ArrowRight } from 'lucide-react';
 
+const LEVEL_LABELS = {
+  1: { text: 'Needs Work', color: '#EF4444' },
+  2: { text: 'Developing', color: '#F97316' },
+  3: { text: 'Proficient', color: '#EAB308' },
+  4: { text: 'Strong', color: '#22C55E' },
+  5: { text: 'Excellent', color: '#0C8E3F' },
+};
+
+const GRADE_MAP = [
+  { min: 4.5, grade: 'A', color: '#0C8E3F' },
+  { min: 3.5, grade: 'B', color: '#22C55E' },
+  { min: 2.5, grade: 'C', color: '#EAB308' },
+  { min: 1.5, grade: 'D', color: '#F97316' },
+  { min: 0, grade: 'F', color: '#EF4444' },
+];
+
+function getOverallGrade(avg) {
+  for (const g of GRADE_MAP) {
+    if (avg >= g.min) return g;
+  }
+  return GRADE_MAP[GRADE_MAP.length - 1];
+}
+
 const DiamondChart = ({ scores }) => {
   const cx = 175;
   const cy = 155;
@@ -14,11 +37,12 @@ const DiamondChart = ({ scores }) => {
     { label: 'Content', dx: -1, dy: 0, maxR: maxRH, lx: 30, ly: 160 },
   ];
 
+  // Normalize levels (1-5) to 0-1 range
   const values = [
-    scores.understanding / 100,
-    scores.evidence / 100,
-    scores.connections / 100,
-    scores.content / 100,
+    scores.understanding / 5,
+    scores.evidence / 5,
+    scores.connections / 5,
+    scores.content / 5,
   ];
 
   const bgPoints = axes.map(a => `${cx + a.dx * a.maxR},${cy + a.dy * a.maxR}`).join(' ');
@@ -61,9 +85,12 @@ const ResultsPage = ({ answer, grades, onNext }) => {
     { key: 'evidence', label: 'Evidence' },
   ];
 
-  const totalPoints = categories.reduce((sum, c) => sum + (grades[c.key]?.score || 0), 0);
-  const scores = {};
-  categories.forEach(c => { scores[c.key] = grades[c.key]?.score || 0; });
+  // Extract levels (1-5) from grades
+  const levels = {};
+  categories.forEach(c => { levels[c.key] = grades[c.key]?.level || 1; });
+
+  const avgLevel = categories.reduce((sum, c) => sum + levels[c.key], 0) / categories.length;
+  const overall = getOverallGrade(avgLevel);
 
   return (
     <div className="flex-1 flex flex-col items-center bg-white py-5 px-6 overflow-hidden">
@@ -102,39 +129,48 @@ const ResultsPage = ({ answer, grades, onNext }) => {
 
             {/* Category rows - scrollable */}
             <div className="flex flex-col overflow-y-auto min-h-0 flex-1" style={{ gap: 12 }}>
-            {categories.map((cat) => (
-              <div key={cat.key} className="flex items-center w-full rounded shrink-0" style={{ padding: '8px 12px', minHeight: 60, gap: 12 }}>
-                <div className="flex flex-col gap-1 flex-1 min-w-0">
-                  <span className="font-mulish font-bold text-black" style={{ fontSize: 17, lineHeight: '21px' }}>{cat.label}</span>
-                  <span className="font-mulish text-black/70 line-clamp-2" style={{ fontSize: 11, lineHeight: '14px' }}>
-                    {grades[cat.key]?.feedback || ''}
-                  </span>
+            {categories.map((cat) => {
+              const level = levels[cat.key];
+              const levelInfo = LEVEL_LABELS[level] || LEVEL_LABELS[1];
+              return (
+                <div key={cat.key} className="flex items-center w-full rounded shrink-0" style={{ padding: '8px 12px', minHeight: 60, gap: 12 }}>
+                  <div className="flex flex-col gap-1 flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mulish font-bold text-black" style={{ fontSize: 17, lineHeight: '21px' }}>{cat.label}</span>
+                      <span className="font-mulish font-medium" style={{ fontSize: 11, lineHeight: '14px', color: levelInfo.color }}>
+                        {levelInfo.text}
+                      </span>
+                    </div>
+                    <span className="font-mulish text-black/70 line-clamp-2" style={{ fontSize: 11, lineHeight: '14px' }}>
+                      {grades[cat.key]?.feedback || ''}
+                    </span>
+                  </div>
+                  <div
+                    className="rounded-full flex items-center justify-center flex-shrink-0"
+                    style={{ width: 48, height: 48, background: levelInfo.color }}
+                  >
+                    <span className="font-mulish font-bold text-white" style={{ fontSize: 22, lineHeight: '28px' }}>
+                      {level}
+                    </span>
+                  </div>
                 </div>
-                <div
-                  className="rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ width: 48, height: 48, background: '#FBB934' }}
-                >
-                  <span className="font-mulish text-black" style={{ fontSize: 24, lineHeight: '30px' }}>
-                    {grades[cat.key]?.score ?? 0}
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
             </div>
 
             {/* Divider */}
             <div className="w-full border-t border-black/35 shrink-0" />
 
-            {/* Total */}
-            <div className="flex items-center justify-end gap-2 px-2 shrink-0">
-              <span className="font-mulish text-black" style={{ fontSize: 12, lineHeight: '15px' }}>Total Points:</span>
-              <span className="font-karla font-bold text-black" style={{ fontSize: 30, lineHeight: '36px' }}>{totalPoints}</span>
+            {/* Overall grade */}
+            <div className="flex items-center justify-end gap-3 px-2 shrink-0">
+              <span className="font-mulish text-black" style={{ fontSize: 12, lineHeight: '15px' }}>Overall Grade:</span>
+              <span className="font-karla font-bold" style={{ fontSize: 30, lineHeight: '36px', color: overall.color }}>{overall.grade}</span>
             </div>
           </div>
 
           {/* Right: Diamond chart */}
           <div className="border border-[#A6A6A6] rounded flex items-center justify-center" style={{ width: 482, padding: 16 }}>
-            <DiamondChart scores={scores} />
+            <DiamondChart scores={levels} />
           </div>
         </div>
 

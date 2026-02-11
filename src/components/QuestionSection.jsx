@@ -19,14 +19,14 @@ const QuestionSection = ({ onClose, agentState, prefillAnswer = '', checklist = 
       onResults({ answer, grades });
     } catch (error) {
       console.error('Error checking answer:', error);
-      // Fallback with default scores
+      // Fallback with default levels
       onResults({
         answer,
         grades: {
-          content: { score: 50, feedback: 'Unable to grade - please try again.' },
-          understanding: { score: 50, feedback: 'Unable to grade - please try again.' },
-          connections: { score: 50, feedback: 'Unable to grade - please try again.' },
-          evidence: { score: 50, feedback: 'Unable to grade - please try again.' },
+          content: { level: 1, feedback: 'Unable to grade - please try again.' },
+          understanding: { level: 1, feedback: 'Unable to grade - please try again.' },
+          connections: { level: 1, feedback: 'Unable to grade - please try again.' },
+          evidence: { level: 1, feedback: 'Unable to grade - please try again.' },
         }
       });
     } finally {

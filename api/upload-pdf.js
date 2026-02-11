@@ -66,6 +66,7 @@ CONTENT:
 - Write realistic character positions (Jamie = enthusiastic but incomplete/off-track, Thomas = analytical but incomplete — they should DISAGREE or have different incomplete perspectives)
 - Write natural opening messages — Jamie should be friendly and bring up something slightly off-topic, Thomas should be skeptical and demand evidence
 - Include relevant grading keywords (keywords_content for themes, keywords_evidence for specific facts/numbers)
+- Generate a ## Rubric section with 4 subsections (Content, Understanding, Connections, Evidence), each with level_1 through level_5 descriptors. Each level must be specific to THIS question and reading — reference actual themes, facts, and numbers from the text. Use measurable criteria (e.g. "Mentions 1-2 of the 7 themes" not "Shows some understanding")
 - Keep the checklist as-is (analogy, example, story)
 - Use the exact markdown format from the template (YAML frontmatter + sections)
 - Do NOT include HTML comments from the template

@@ -85,6 +85,42 @@ I have some ideas but I need stronger evidence. What did the reading say?
 - keywords_content: keyword1, keyword2, keyword3
 - keywords_evidence: specific fact 1, specific fact 2, specific number
 
+## Rubric
+
+<!--
+  Structured grading rubric with 5 levels per dimension.
+  The AI uses these concrete descriptors to assign consistent grades.
+  Tailor each level to the specific question and reading content.
+-->
+
+### Content
+- level_1: Does not address any themes from the reading
+- level_2: Mentions 1-2 themes but with no detail
+- level_3: Covers 3-4 themes with some explanation
+- level_4: Addresses 5-6 themes with clear explanations
+- level_5: Comprehensively covers all 7 themes with detailed analysis
+
+### Understanding
+- level_1: Response is incoherent or off-topic
+- level_2: Lists facts without explanation or context
+- level_3: Shows basic understanding with some analysis
+- level_4: Demonstrates clear comprehension with thoughtful connections
+- level_5: Shows deep understanding, synthesizes ideas, goes beyond surface
+
+### Connections
+- level_1: No links between ideas or themes
+- level_2: One vague connection mentioned
+- level_3: 2-3 cause-effect relationships identified
+- level_4: Multiple clear connections with reasoning
+- level_5: Rich web of connections showing systemic thinking
+
+### Evidence
+- level_1: No specific facts or details cited
+- level_2: 1-2 vague references to the text
+- level_3: 3-4 specific details (numbers, places, names)
+- level_4: 5-6 precise details with context
+- level_5: 7+ specific facts/numbers woven naturally into argument
+
 ## Checklist
 
 <!--

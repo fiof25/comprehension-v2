@@ -62,6 +62,19 @@ function parseListField(content, key) {
 }
 
 /**
+ * Parse a rubric dimension's level descriptors (level_1 through level_5).
+ */
+function parseRubricDimension(content) {
+    if (!content) return null;
+    const levels = {};
+    for (let i = 1; i <= 5; i++) {
+        const desc = parseField(content, `level_${i}`);
+        if (desc) levels[i] = desc;
+    }
+    return Object.keys(levels).length > 0 ? levels : null;
+}
+
+/**
  * Parse numbered list items (1. item, 2. item, etc.)
  */
 function parseNumberedList(content) {
@@ -109,6 +122,15 @@ export function parseActivity(filePath) {
     const keywordsContent = parseListField(gradingSection, 'keywords_content');
     const keywordsEvidence = parseListField(gradingSection, 'keywords_evidence');
 
+    // ## Rubric
+    const rubricSection = getSection(content, 'Rubric');
+    const rubric = rubricSection ? {
+        content: parseRubricDimension(getSubSection(rubricSection, 'Content')),
+        understanding: parseRubricDimension(getSubSection(rubricSection, 'Understanding')),
+        connections: parseRubricDimension(getSubSection(rubricSection, 'Connections')),
+        evidence: parseRubricDimension(getSubSection(rubricSection, 'Evidence')),
+    } : null;
+
     // ## Checklist
     const checklistSection = getSection(content, 'Checklist');
     const checklist = [];
@@ -149,6 +171,7 @@ export function parseActivity(filePath) {
             keywordsContent,
             keywordsEvidence,
         },
+        rubric,
         checklist,
     };
 }
