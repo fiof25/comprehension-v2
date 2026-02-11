@@ -1,28 +1,30 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 
-const fileInfo = {
-  title: 'Drought on the Prairies',
-  thumbnail: '/assets/drought_banner.png',
-  topics: ['Reading', 'English', 'Science', 'Nature', 'Geography', 'Environment'],
-};
+const QuestionSelectionView = ({ activities: activitiesProp, onQuestionSelect, onBack }) => {
+  const [fetchedActivities, setFetchedActivities] = useState([]);
 
-const questions = [
-  {
-    id: 1,
-    text: 'How did the drought affect forests and other non-farming communities across Canada?',
-    tag: 'Comprehension',
-    askedBy: 'Jamie and Thomas',
-  },
-  {
-    id: 2,
-    text: 'What similarities and differences did you notice between other regions droughts have affected and the Prairies?',
-    tag: 'Comparison',
-    askedBy: 'Thomas',
-  },
-];
+  // Fetch activities if none were passed as props
+  useEffect(() => {
+    if (!activitiesProp || activitiesProp.length === 0) {
+      fetch('/api/activities')
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) setFetchedActivities(data);
+        })
+        .catch(err => console.error('Failed to load activities:', err));
+    }
+  }, [activitiesProp]);
 
-const QuestionSelectionView = ({ onQuestionSelect, onBack }) => {
+  const activities = (activitiesProp && activitiesProp.length > 0) ? activitiesProp : fetchedActivities;
+
+  // Group activities by title to show file info from the first one
+  const fileInfo = activities.length > 0 ? {
+    title: activities[0].title,
+    thumbnail: activities[0].thumbnail,
+    topics: activities[0].topics,
+  } : { title: '', thumbnail: '', topics: [] };
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden" style={{ height: 'calc(100vh - 52px)' }}>
       <div className="bg-white border-b border-black/35 px-6 py-2.5 flex items-center justify-between shrink-0" style={{ gap: '64px' }}>
@@ -71,12 +73,12 @@ const QuestionSelectionView = ({ onQuestionSelect, onBack }) => {
           </div>
 
           <div className="flex flex-col gap-4">
-            {questions.map((q) => (
+            {activities.map((a, index) => (
               <div
-                key={q.id}
+                key={a.slug}
                 className="border border-black/15 rounded p-4 flex items-end justify-between gap-6"
                 style={{
-                  backgroundImage: `url(/assets/q${q.id}card.png)`,
+                  backgroundImage: `url(/assets/q${index + 1}card.png)`,
                   backgroundSize: 'cover',
                   backgroundPosition: 'right bottom',
                   backgroundRepeat: 'no-repeat',
@@ -84,17 +86,17 @@ const QuestionSelectionView = ({ onQuestionSelect, onBack }) => {
               >
                 <div className="flex flex-col gap-3 flex-1 min-w-0">
                   <p className="text-xl font-medium font-karla text-black leading-tight">
-                    {q.text}
+                    {a.questionText}
                   </p>
                   <span className="border border-[#0c8e3f] text-[#0c8e3f] text-sm font-mulish px-3 py-0.5 rounded w-fit">
-                    {q.tag}
+                    {a.tag}
                   </span>
-                  <span className="text-base font-mulish text-black/70">Asked by {q.askedBy}</span>
+                  <span className="text-base font-mulish text-black/70">Asked by {a.askedBy}</span>
                 </div>
 
                 <button
-                  onClick={() => q.id === 1 && onQuestionSelect(q.id)}
-                  className={`${q.id === 1 ? 'bg-[#0c8e3f] hover:bg-[#0a7534] cursor-pointer' : 'bg-[#0c8e3f]/50 cursor-default'} transition-colors text-white px-4 py-2 rounded flex items-center gap-3 whitespace-nowrap shrink-0 self-center`}
+                  onClick={() => onQuestionSelect(a.slug)}
+                  className="bg-[#0c8e3f] hover:bg-[#0a7534] cursor-pointer transition-colors text-white px-4 py-2 rounded flex items-center gap-3 whitespace-nowrap shrink-0 self-center"
                 >
                   <span className="text-sm font-mulish">Start learning</span>
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, ArrowRight } from 'lucide-react';
 
-const QuestionSection = ({ onClose, agentState, prefillAnswer = '', checklist = [], onResults }) => {
+const QuestionSection = ({ onClose, agentState, prefillAnswer = '', checklist = [], onResults, activitySlug, questionText }) => {
   const [answer, setAnswer] = useState(prefillAnswer);
   const [isChecking, setIsChecking] = useState(false);
 
@@ -13,7 +13,7 @@ const QuestionSection = ({ onClose, agentState, prefillAnswer = '', checklist = 
       const grades = await fetch('/api/check-answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answer })
+        body: JSON.stringify({ answer, activitySlug })
       }).then(res => res.json());
 
       onResults({ answer, grades });
@@ -56,7 +56,7 @@ const QuestionSection = ({ onClose, agentState, prefillAnswer = '', checklist = 
                 <img src="/assets/thomaschat.png" alt="Thomas" className="w-9 h-9 rounded-full border-2 border-[#F0F6FF]" />
               </div>
               <p className="font-mulish text-black" style={{ fontSize: '16px', lineHeight: '20px' }}>
-                &ldquo;How did the drought affect forests and other non-farming communities across Canada?&rdquo;
+                &ldquo;{questionText || 'How did the drought affect forests and other non-farming communities across Canada?'}&rdquo;
               </p>
             </div>
           </div>

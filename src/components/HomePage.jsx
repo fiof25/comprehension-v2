@@ -1,38 +1,17 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 
-const modules = [
-  {
-    id: 1,
-    title: 'Essay Critique',
-    questionsCompleted: 24,
-    createdDate: 'January 31st, 2026',
-    thumbnail: '/assets/ph1.png',
-  },
-  {
-    id: 2,
-    title: 'Advanced Functions',
-    questionsCompleted: 24,
-    createdDate: 'January 31st, 2026',
-    thumbnail: '/assets/ph2.png',
-  },
-  {
-    id: 3,
-    title: 'Biology',
-    questionsCompleted: 24,
-    createdDate: 'January 31st, 2026',
-    thumbnail: '/assets/ph3.png',
-  },
-  {
-    id: 4,
-    title: 'AI Design',
-    questionsCompleted: 24,
-    createdDate: 'January 31st, 2026',
-    thumbnail: '/assets/ph4.png',
-  },
-];
-
-const HomePage = ({ onStartLearning }) => {
+const HomePage = ({ onStartLearning, onSelectActivity }) => {
   const fileInputRef = useRef(null);
+  const [activities, setActivities] = useState([]);
+
+  useEffect(() => {
+    fetch('/api/activities')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setActivities(data);
+      })
+      .catch(err => console.error('Failed to load activities:', err));
+  }, []);
 
   const handleFileChange = (e) => {
     if (e.target.files.length > 0) {
@@ -46,6 +25,16 @@ const HomePage = ({ onStartLearning }) => {
       onStartLearning();
     }
   };
+
+  // Group activities by title for display as module cards
+  const moduleMap = {};
+  activities.forEach(a => {
+    if (!moduleMap[a.title]) {
+      moduleMap[a.title] = { title: a.title, thumbnail: a.thumbnail, activities: [] };
+    }
+    moduleMap[a.title].activities.push(a);
+  });
+  const modules = Object.values(moduleMap);
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -107,21 +96,15 @@ const HomePage = ({ onStartLearning }) => {
         </div>
       </div>
 
-      {/* Previous modules */}
+      {/* Available activities */}
       <div className="max-w-[1368px] mx-auto px-9 py-16">
         <div className="flex items-end justify-between mb-6">
-          <h2 className="text-2xl font-bold font-mulish text-black">Previous learning modules</h2>
-          <button className="bg-white border border-black/35 px-6 py-3 rounded flex items-center gap-4 text-base font-mulish text-black">
-            View All
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
+          <h2 className="text-2xl font-bold font-mulish text-black">Available learning modules</h2>
         </div>
 
         <div className="grid grid-cols-4 gap-6">
           {modules.map((m) => (
-            <div key={m.id} className="bg-white border border-black/50 rounded-lg p-6 flex flex-col gap-4">
+            <div key={m.title} className="bg-white border border-black/50 rounded-lg p-6 flex flex-col gap-4">
               <div className="aspect-[328/201] border border-black/35 rounded overflow-hidden">
                 <img src={m.thumbnail} alt={m.title} className="w-full h-full object-cover" />
               </div>
@@ -132,18 +115,15 @@ const HomePage = ({ onStartLearning }) => {
                   <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
-                  {m.questionsCompleted} Questions completed
-                </div>
-                <div className="flex items-center gap-2.5 text-base font-mulish text-black/75">
-                  <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
-                  </svg>
-                  Created on {m.createdDate}
+                  {m.activities.length} {m.activities.length === 1 ? 'activity' : 'activities'} available
                 </div>
               </div>
 
-              <button className="w-full bg-white border border-black/35 px-6 py-3 rounded flex items-center justify-center gap-4 text-base font-mulish text-black">
-                Continue learning
+              <button
+                onClick={() => onSelectActivity(m.activities)}
+                className="w-full bg-white border border-black/35 px-6 py-3 rounded flex items-center justify-center gap-4 text-base font-mulish text-black hover:bg-gray-50 transition-colors"
+              >
+                Start learning
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>

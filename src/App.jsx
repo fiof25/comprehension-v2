@@ -25,50 +25,78 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [isJamieTyping, setIsJamieTyping] = useState(false);
   const [isThomasTyping, setIsThomasTyping] = useState(false);
+
+  // Activity-driven state
+  const [activitiesList, setActivitiesList] = useState([]); // list of activity summaries for question selection
+  const [selectedActivity, setSelectedActivity] = useState(null); // full activity object for the current session
+
   const [checklist, setChecklist] = useState([
     { id: 'analogy', label: 'Use an analogy in your explanation', completed: false },
     { id: 'example', label: 'Bring up an example from the text', completed: false },
     { id: 'story', label: '(Bonus) Tell an interesting story', completed: false },
   ]);
   const [agentState, setAgentState] = useState({
-    jamie: {
-      opinion: "The drought affected crops like wheat, canola, and barley. People at the ranch faced barren pastures and sold off cattle.",
-      status: "RED"
-    },
-    thomas: {
-      opinion: "The drought affected forests by making trees dry and unhealthy, which caused problems for animals living there. It impacted non-farming communities as people had to deal with environmental challenges.",
-      status: "RED"
-    }
+    jamie: { opinion: '', status: 'RED' },
+    thomas: { opinion: '', status: 'RED' },
   });
 
-  // Initial greeting - Triggered when moving to the question step
+  // When an activity is selected, load its full data and initialize state
+  const handleSelectActivitySlug = async (slug) => {
+    try {
+      const activity = await fetch(`/api/activities/${slug}`).then(r => r.json());
+      setSelectedActivity(activity);
+
+      // Initialize from activity data
+      setAgentState({
+        jamie: {
+          opinion: activity.characterPositions.jamie.opinion,
+          status: activity.characterPositions.jamie.status,
+        },
+        thomas: {
+          opinion: activity.characterPositions.thomas.opinion,
+          status: activity.characterPositions.thomas.status,
+        },
+      });
+
+      if (activity.checklist && activity.checklist.length > 0) {
+        setChecklist(activity.checklist.map(c => ({ ...c, completed: false })));
+      }
+
+      setMessages([]);
+      setActiveStep('question');
+    } catch (error) {
+      console.error('Error loading activity:', error);
+    }
+  };
+
+  // Initial greeting - Triggered when moving to the question step with a selected activity
   useEffect(() => {
-    if (activeStep === 'question' && messages.length === 0) {
+    if (activeStep === 'question' && messages.length === 0 && selectedActivity) {
       setMessages([
         {
           role: 'assistant',
           character: 'jamie',
-          content: "Hi! Thanks so much for helping us! I keep thinking about the poor dehydrated crops... but Thomas keeps shutting it down.",
+          content: selectedActivity.initialMessages.jamie,
           timestamp: new Date(),
-          status: agentState.jamie.status
+          status: agentState.jamie.status,
         },
         {
           role: 'assistant',
           character: 'thomas',
-          content: "Jamie keeps mentioning farms, but I don't think that's relevant. I need some strong evidence. What did the reading say?",
+          content: selectedActivity.initialMessages.thomas,
           timestamp: new Date(),
-          status: agentState.thomas.status
-        }
+          status: agentState.thomas.status,
+        },
       ]);
     }
-  }, [activeStep, messages.length]);
+  }, [activeStep, messages.length, selectedActivity]);
 
   const handleSendMessage = async (text) => {
-    if (isJamieTyping || isThomasTyping) return; 
+    if (isJamieTyping || isThomasTyping) return;
 
     // Prevent duplicate submission if same text sent within 1 second
-    if (messages.length > 0 && 
-        messages[messages.length-1].content === text && 
+    if (messages.length > 0 &&
+        messages[messages.length-1].content === text &&
         messages[messages.length-1].role === 'user' &&
         new Date() - new Date(messages[messages.length-1].timestamp) < 1000) {
       return;
@@ -76,10 +104,10 @@ function App() {
 
     const userMessage = { role: 'user', content: text, timestamp: new Date() };
     const newMessages = [...messages, userMessage];
-    
+
     setMessages(newMessages);
     setIsJamieTyping(true); // Set early to prevent double submission
-    
+
     getAIResponses(newMessages);
   };
 
@@ -91,9 +119,10 @@ function App() {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          messages: history, 
-          agentState: agentState
+        body: JSON.stringify({
+          messages: history,
+          agentState: agentState,
+          activitySlug: selectedActivity?.slug,
         })
       }).then(res => res.json());
 
@@ -108,7 +137,7 @@ function App() {
         }));
 
         setMessages(prev => [...prev, ...newMsgs]);
-        
+
         if (response.updatedState) {
           setAgentState(response.updatedState);
         }
@@ -142,15 +171,31 @@ function App() {
     }
   }, [activeStep]);
 
+  const questionText = selectedActivity?.question?.text || '';
+
   const renderContent = () => {
     if (activeStep === 'home') {
-      return <HomePage onStartLearning={() => setActiveStep('loading')} />;
+      return (
+        <HomePage
+          onStartLearning={() => setActiveStep('loading')}
+          onSelectActivity={(activities) => {
+            setActivitiesList(activities);
+            setActiveStep('loading');
+          }}
+        />
+      );
     }
     if (activeStep === 'loading') {
       return <LoadingScreen />;
     }
     if (activeStep === 'questionSelect') {
-      return <QuestionSelectionView onQuestionSelect={() => setActiveStep('question')} onBack={() => setActiveStep('home')} />;
+      return (
+        <QuestionSelectionView
+          activities={activitiesList}
+          onQuestionSelect={handleSelectActivitySlug}
+          onBack={() => setActiveStep('home')}
+        />
+      );
     }
 
     if (activeStep === 'results' && resultsData) {
@@ -245,7 +290,7 @@ function App() {
             <div className="p-6 border-b border-black/35 flex gap-4">
               <div className="flex-1 flex flex-col gap-[11px]">
                 <div className="bg-[#fafafa] border border-[#d7d7d7] rounded" style={{ padding: '12px 14px' }}>
-                  <h2 className="font-semibold font-karla text-black" style={{ fontSize: '19px', lineHeight: '26px' }}>&ldquo;How did the drought affect forests and non-farming communities across Canada?&rdquo;</h2>
+                  <h2 className="font-semibold font-karla text-black" style={{ fontSize: '19px', lineHeight: '26px' }}>&ldquo;{questionText}&rdquo;</h2>
                 </div>
                 <p className="font-mulish text-black/60" style={{ fontSize: '13px', lineHeight: '18px' }}>Thomas and Jamie have different stances on this question. Try to clarify their concerns and develop your final answer.</p>
               </div>
@@ -317,8 +362,8 @@ function App() {
             {/* PDF viewer */}
             <div className="flex-1 min-h-0 bg-[#525659]">
               <iframe
-                src="/assets/Drought_Reading.pdf#toolbar=0&navpanes=0&view=FitH"
-                title="Drought Reading"
+                src={`${selectedActivity?.pdf || '/assets/Drought_Reading.pdf'}#toolbar=0&navpanes=0&view=FitH`}
+                title="Reading Content"
                 className="w-full h-full border-none"
               />
             </div>
@@ -332,6 +377,8 @@ function App() {
             agentState={agentState}
             prefillAnswer={prefillAnswer}
             checklist={checklist}
+            activitySlug={selectedActivity?.slug}
+            questionText={questionText}
             onResults={(data) => { setResultsData(data); setShowFinishModal(false); setActiveStep('results'); }}
           />
         )}
