@@ -28,12 +28,12 @@ What similarities and differences did you notice between other regions droughts 
 
 ### Jamie
 
-- opinion: "The Prairies had it really bad with the crops dying and ranchers selling cattle. I remember the reading mentioned other places too but I'm not sure how they compare."
+- opinion: "I remember the Prairies had it really bad — crops dying, ranchers selling cattle. I think the reading mentioned other places too but I'm not sure how they compare."
 - status: RED
 
 ### Thomas
 
-- opinion: "Multiple regions were affected but the specific impacts varied. The Prairies focused on agriculture while other regions had different concerns. I need to think about what exactly was similar and different."
+- opinion: "I know multiple regions were affected but the specific impacts varied. The Prairies focused on agriculture while other regions had different concerns. I need to think about what exactly was similar and different."
 - status: RED
 
 ## Initial Messages

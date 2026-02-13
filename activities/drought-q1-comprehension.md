@@ -28,12 +28,12 @@ How did the drought affect forests and other non-farming communities across Cana
 
 ### Jamie
 
-- opinion: "The drought affected crops like wheat, canola, and barley. People at the ranch faced barren pastures and sold off cattle, and turned to irrigation but due to scarce water supplies it became too expensive."
+- opinion: "I keep thinking about the crops — wheat, canola, barley — all wiped out. And the ranchers had to sell off their cattle because the pastures were barren. They tried irrigation but water was too scarce and expensive."
 - status: RED
 
 ### Thomas
 
-- opinion: "The drought affected forests by making trees dry and unhealthy, which caused problems for animals living there. It impacted non-farming communities because some people had to change their routines and deal with environmental challenges. Overall, the drought made life harder outside of farming areas as nature was damaged."
+- opinion: "I think the drought made the forests really dry and unhealthy, which must have been bad for wildlife. And people outside farming areas had to deal with environmental issues too. It seems like life got harder everywhere, not just on farms."
 - status: RED
 
 ## Initial Messages

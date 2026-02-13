@@ -40,7 +40,7 @@ const AgentCard = ({ name, avatar, bgColor, borderColor, status, opinion }) => {
   );
 };
 
-const ResultsPage2 = ({ agentState, messages, onNext, onBack }) => {
+const ResultsPage2 = ({ agentState, messages, questionText, onNext, onBack }) => {
   const chatEndRef = useRef(null);
 
   useEffect(() => {
@@ -66,7 +66,7 @@ const ResultsPage2 = ({ agentState, messages, onNext, onBack }) => {
           <div className="flex flex-col gap-4 shrink-0" style={{ width: 445 }}>
             <div className="rounded bg-[#F9F9F9] border border-black/15" style={{ padding: '10px 14px' }}>
               <p className="font-karla font-medium text-black" style={{ fontSize: 15, lineHeight: '20px' }}>
-                How did the drought affect forests and other non-farming communities across Canada?
+                {questionText || 'Discussion question'}
               </p>
             </div>
             <AgentCard

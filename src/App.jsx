@@ -291,6 +291,7 @@ function App() {
           <ResultsPage2
             agentState={agentState}
             messages={messages}
+            questionText={questionText}
             onNext={() => setActiveStep('home')}
             onBack={() => setActiveStep('results')}
           />

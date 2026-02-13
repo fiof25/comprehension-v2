@@ -49,12 +49,12 @@ Write the discussion question here. This is what students will discuss with Jami
 
 ### Jamie
 
-- opinion: "Jamie's initial (incomplete) understanding of the topic..."
+- opinion: "I think... (Jamie's initial incomplete understanding, written in first person)"
 - status: RED
 
 ### Thomas
 
-- opinion: "Thomas's initial (incomplete) understanding of the topic..."
+- opinion: "I believe... (Thomas's initial incomplete understanding, written in first person)"
 - status: RED
 
 ## Initial Messages

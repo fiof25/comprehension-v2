@@ -166,7 +166,7 @@ Generate a complete activity markdown file. Requirements:
 
 LENGTH & STYLE — follow these examples closely:
 - Question: ONE short sentence, ~10-15 words max. Example: "How did the drought affect forests and other non-farming communities across Canada?"
-- Character opinions: 2-3 short sentences each, ~25-40 words. Example: "The drought affected crops like wheat, canola, and barley. People at the ranch faced barren pastures and sold off cattle, and turned to irrigation but due to scarce water supplies it became too expensive."
+- Character opinions: 2-3 short sentences each, ~25-40 words, written in FIRST PERSON (the character speaking as "I"). Example: "I keep thinking about the crops — wheat, canola, barley — all wiped out. And the ranchers had to sell off their cattle because the pastures were barren."
 - Initial messages: 1-2 casual short sentences, ~15-25 words. Jamie example: "Hi! Thanks so much for helping us! I keep thinking about the poor dehydrated crops... but Thomas keeps shutting it down." Thomas example: "Jamie keeps mentioning farms, but I don't think that's relevant. I need some strong evidence. What did the reading say?"
 - Keep ALL text conversational, brief, and age-appropriate for students.
 

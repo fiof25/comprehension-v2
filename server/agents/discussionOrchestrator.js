@@ -41,7 +41,7 @@ Output ONLY this JSON:
 {
   "facts": [ {"fact": "...", "status": "HIDDEN|UNCOVERED"}, ... ],
   "checklist": { "analogy": true/false, "example": true/false, "story": true/false },
-  "jamie": { "thoughtProcess": "...", "status": "RED|YELLOW|GREEN", "updatedOpinion": "...", "message": "..." },
-  "thomas": { "thoughtProcess": "...", "status": "RED|YELLOW|GREEN", "updatedOpinion": "...", "message": "..." }
+  "jamie": { "thoughtProcess": "...", "status": "RED|YELLOW|GREEN", "updatedOpinion": "first-person opinion (e.g. 'I think...', 'I'm starting to see...')", "message": "..." },
+  "thomas": { "thoughtProcess": "...", "status": "RED|YELLOW|GREEN", "updatedOpinion": "first-person opinion (e.g. 'I believe...', 'I can see that...')", "message": "..." }
 }
 `;
