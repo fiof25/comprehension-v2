@@ -45,6 +45,7 @@ const QuestionSelectionView = ({ activities: activitiesProp, onQuestionSelect, o
                 src={fileInfo.thumbnail || '/assets/placeholder.jpg'}
                 alt={fileInfo.title}
                 className="w-full h-full object-cover"
+                onError={(e) => { e.target.onerror = null; e.target.src = '/assets/placeholder.jpg'; }}
               />
             </div>
             <p className="text-base font-karla text-black mt-2">Chosen file:</p>

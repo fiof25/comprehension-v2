@@ -178,7 +178,7 @@ const HomePage = ({ onStartLearning, onSelectActivity }) => {
           {modules.map((m) => (
             <div key={m.title} className="bg-white border border-black/50 rounded-lg p-6 flex flex-col gap-4">
               <div className="aspect-[328/201] border border-black/35 rounded overflow-hidden">
-                <img src={m.thumbnail || '/assets/placeholder.jpg'} alt={m.title} className="w-full h-full object-cover" />
+                <img src={m.thumbnail || '/assets/placeholder.jpg'} alt={m.title} className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.src = '/assets/placeholder.jpg'; }} />
               </div>
 
               <div className="flex flex-col gap-2">
