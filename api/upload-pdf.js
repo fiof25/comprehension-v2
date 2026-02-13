@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { loadActivity } from '../server/activityParser.js';
+import { parseActivityFromString } from '../server/activityParser.js';
 
 const require = createRequire(import.meta.url);
 const pdfParse = require('pdf-parse');
@@ -150,11 +150,13 @@ export default async function handler(req, res) {
         const slug = originalName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
         const pdfPath = `/assets/${slug}.pdf`;
 
-        // 2. Save PDF to /tmp on Vercel (or public/assets locally)
-        const assetsDir = path.join(__dirname, '..', 'public', 'assets');
-        if (fs.existsSync(assetsDir)) {
-            fs.writeFileSync(path.join(assetsDir, `${slug}.pdf`), file.buffer);
-        }
+        // 2. Save PDF (only if filesystem is writable — skipped on Vercel)
+        try {
+            const assetsDir = path.join(__dirname, '..', 'public', 'assets');
+            if (fs.existsSync(assetsDir)) {
+                fs.writeFileSync(path.join(assetsDir, `${slug}.pdf`), file.buffer);
+            }
+        } catch (e) { /* read-only filesystem on Vercel — PDF lives in memory only */ }
 
         // 3. Extract text from PDF
         const pdfData = await pdfParse(file.buffer);
@@ -182,23 +184,19 @@ export default async function handler(req, res) {
             const generatedMd = results[i].value;
             const activitySlug = `${slug}-q${i + 1}-${typesToGenerate[i].type}`;
 
-            // Write to activities dir (works locally, may be read-only on Vercel)
-            const activitiesDir = path.join(__dirname, '..', 'activities');
-            const filePath = path.join(activitiesDir, `${activitySlug}.md`);
+            // Parse in memory (no file I/O needed)
             try {
-                fs.writeFileSync(filePath, generatedMd, 'utf8');
-            } catch (writeErr) {
-                // On Vercel, write to /tmp instead
-                const tmpPath = path.join('/tmp', `${activitySlug}.md`);
-                fs.writeFileSync(tmpPath, generatedMd, 'utf8');
-            }
-
-            try {
-                const activity = loadActivity(activitySlug);
+                const activity = parseActivityFromString(generatedMd, activitySlug);
                 if (activity) activities.push(activity);
             } catch (parseErr) {
                 console.error(`Failed to parse ${activitySlug}:`, parseErr);
             }
+
+            // Also try to persist to disk (for local dev — will silently fail on Vercel)
+            try {
+                const activitiesDir = path.join(__dirname, '..', 'activities');
+                fs.writeFileSync(path.join(activitiesDir, `${activitySlug}.md`), generatedMd, 'utf8');
+            } catch (e) { /* read-only on Vercel */ }
         }
 
         if (activities.length === 0) {

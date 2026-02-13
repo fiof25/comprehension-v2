@@ -86,12 +86,10 @@ function parseNumberedList(content) {
 }
 
 /**
- * Parse a single activity markdown file into a structured object.
+ * Parse activity markdown from a raw string + slug (no file I/O needed).
  */
-export function parseActivity(filePath) {
-    const raw = fs.readFileSync(filePath, 'utf8');
+export function parseActivityFromString(raw, slug) {
     const { data: frontmatter, content } = matter(raw);
-    const slug = path.basename(filePath, '.md');
 
     // # Question (level 1)
     const questionMatch = content.match(/^#\s+Question\s*$([\s\S]*?)(?=^##\s+)/im);
@@ -174,6 +172,15 @@ export function parseActivity(filePath) {
         rubric,
         checklist,
     };
+}
+
+/**
+ * Parse a single activity markdown file into a structured object.
+ */
+export function parseActivity(filePath) {
+    const raw = fs.readFileSync(filePath, 'utf8');
+    const slug = path.basename(filePath, '.md');
+    return parseActivityFromString(raw, slug);
 }
 
 /**
