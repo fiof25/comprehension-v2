@@ -70,7 +70,7 @@ CONTENT:
 - Keep the checklist as-is (analogy, example, story)
 - Use the exact markdown format from the template (YAML frontmatter + sections)
 - Do NOT include HTML comments from the template
-- Use a relevant thumbnail path: "/assets/${title.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_banner.png"
+- Use this exact thumbnail path: "/assets/placeholder.jpg"
 
 Output ONLY the markdown file content, nothing else.`;
 
