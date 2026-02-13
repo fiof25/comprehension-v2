@@ -37,6 +37,20 @@ function extractVideoId(url) {
     return null;
 }
 
+async function fetchTranscript(videoId) {
+    // Use Gemini to extract transcript — works reliably from any server
+    const result = await model.generateContent([
+        {
+            fileData: {
+                mimeType: 'video/mp4',
+                fileUri: `https://www.youtube.com/watch?v=${videoId}`,
+            },
+        },
+        { text: 'Extract and output the COMPLETE word-for-word spoken transcript of this video. Output ONLY the raw transcript text. No timestamps, no formatting, no commentary, no labels. Just the spoken words exactly as said in the video.' },
+    ]);
+    return result.response.text();
+}
+
 async function generateActivityFromText(readingText, title, contentPath, questionType) {
     const templatePath = path.join(__dirname, '..', 'activities', 'TEMPLATE.md');
     const template = fs.readFileSync(templatePath, 'utf8');
@@ -103,37 +117,10 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Invalid YouTube URL. Please provide a valid youtube.com or youtu.be link.' });
         }
 
-        // 1. Fetch transcript via YouTube innertube API (Android client)
+        // 1. Fetch transcript — try two methods
         let transcript;
         try {
-            const playerRes = await fetch('https://www.youtube.com/youtubei/v1/player', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'User-Agent': 'com.google.android.youtube/19.29.37 (Linux; U; Android 11) gzip',
-                },
-                body: JSON.stringify({
-                    context: {
-                        client: { clientName: 'ANDROID', clientVersion: '19.29.37', androidSdkVersion: 30, hl: 'en', gl: 'US' },
-                    },
-                    videoId,
-                }),
-            });
-            const playerData = await playerRes.json();
-            const tracks = playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
-            if (!tracks || tracks.length === 0) {
-                throw new Error('No caption tracks available');
-            }
-            const enTrack = tracks.find(t => t.languageCode === 'en') || tracks[0];
-            const captionRes = await fetch(enTrack.baseUrl, {
-                headers: { 'User-Agent': 'com.google.android.youtube/19.29.37 (Linux; U; Android 11) gzip' },
-            });
-            const xml = await captionRes.text();
-            const segments = [...xml.matchAll(/<p[^>]*>(.*?)<\/p>/gs)];
-            transcript = segments.map(m => m[1]
-                .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-                .replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/<[^>]+>/g, '')
-            ).join(' ');
+            transcript = await fetchTranscript(videoId);
         } catch (err) {
             console.error('Transcript error:', err);
             return res.status(400).json({ error: 'Could not fetch transcript. The video may not have captions enabled.' });
