@@ -10,6 +10,7 @@
   "rewrites": [
     { "source": "/api/chat", "destination": "/api/chat" },
     { "source": "/api/check-answer", "destination": "/api/check-answer" },
-    { "source": "/api/upload-pdf", "destination": "/api/upload-pdf" }
+    { "source": "/api/upload-pdf", "destination": "/api/upload-pdf" },
+    { "source": "/api/reset-session", "destination": "/api/reset-session" }
   ]
 }

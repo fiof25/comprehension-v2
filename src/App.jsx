@@ -55,6 +55,11 @@ function App() {
   const [isJamieTyping, setIsJamieTyping] = useState(false);
   const [isThomasTyping, setIsThomasTyping] = useState(false);
 
+  // Clean up generated files on page load (session reset)
+  useEffect(() => {
+    fetch('/api/reset-session', { method: 'POST' }).catch(() => {});
+  }, []);
+
   // Activity-driven state
   const [activitiesList, setActivitiesList] = useState([]); // list of activity summaries for question selection
   const [selectedActivity, setSelectedActivity] = useState(null); // full activity object for the current session

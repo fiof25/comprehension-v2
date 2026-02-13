@@ -498,6 +498,44 @@ Respond ONLY with valid JSON:
     }
 });
 
+// --- Reset session: clean up generated files ---
+const PROTECTED_ACTIVITIES = new Set(['TEMPLATE.md', 'drought-q1-comprehension.md', 'drought-q2-comparison.md']);
+const PROTECTED_ASSETS = new Set([
+    'Drought_Reading.pdf', 'drought-reading.pdf', 'backgroundimage.png', 'drought_banner.png',
+    'drought_banner_long.png', 'hero_backdrop.svg', 'jamie_beaver.png', 'jamiechat.png',
+    'ph1.png', 'ph2.png', 'ph3.png', 'ph4.png', 'q1card.png', 'q2card.png',
+    'thomas_goose.png', 'thomaschat.png',
+]);
+
+app.post('/api/reset-session', (req, res) => {
+    let deletedFiles = [];
+
+    // Clean generated activity files
+    const activitiesDir = path.join(__dirname, '..', 'activities');
+    if (fs.existsSync(activitiesDir)) {
+        for (const file of fs.readdirSync(activitiesDir)) {
+            if (!PROTECTED_ACTIVITIES.has(file) && file.endsWith('.md')) {
+                fs.unlinkSync(path.join(activitiesDir, file));
+                deletedFiles.push(`activities/${file}`);
+            }
+        }
+    }
+
+    // Clean uploaded PDFs
+    const assetsDir = path.join(__dirname, '..', 'public', 'assets');
+    if (fs.existsSync(assetsDir)) {
+        for (const file of fs.readdirSync(assetsDir)) {
+            if (!PROTECTED_ASSETS.has(file)) {
+                fs.unlinkSync(path.join(assetsDir, file));
+                deletedFiles.push(`public/assets/${file}`);
+            }
+        }
+    }
+
+    console.log(`[reset-session] Cleaned up ${deletedFiles.length} files:`, deletedFiles);
+    res.json({ deleted: deletedFiles.length });
+});
+
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
 });
