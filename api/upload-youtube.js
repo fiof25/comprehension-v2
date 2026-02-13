@@ -2,7 +2,6 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { YoutubeTranscript } from 'youtube-transcript';
 import { parseActivityFromString } from '../server/activityParser.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -104,11 +103,35 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Invalid YouTube URL. Please provide a valid youtube.com or youtu.be link.' });
         }
 
-        // 1. Fetch transcript
+        // 1. Fetch transcript via YouTube innertube API (Android client)
         let transcript;
         try {
-            const segments = await YoutubeTranscript.fetchTranscript(videoId);
-            transcript = segments.map(s => s.text).join(' ');
+            const playerRes = await fetch('https://www.youtube.com/youtubei/v1/player', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'com.google.android.youtube/19.29.37 (Linux; U; Android 11) gzip',
+                },
+                body: JSON.stringify({
+                    context: {
+                        client: { clientName: 'ANDROID', clientVersion: '19.29.37', androidSdkVersion: 30, hl: 'en', gl: 'US' },
+                    },
+                    videoId,
+                }),
+            });
+            const playerData = await playerRes.json();
+            const tracks = playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+            if (!tracks || tracks.length === 0) {
+                throw new Error('No caption tracks available');
+            }
+            const enTrack = tracks.find(t => t.languageCode === 'en') || tracks[0];
+            const captionRes = await fetch(enTrack.baseUrl);
+            const xml = await captionRes.text();
+            const segments = [...xml.matchAll(/<p[^>]*>(.*?)<\/p>/gs)];
+            transcript = segments.map(m => m[1]
+                .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+                .replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/<[^>]+>/g, '')
+            ).join(' ');
         } catch (err) {
             console.error('Transcript error:', err);
             return res.status(400).json({ error: 'Could not fetch transcript. The video may not have captions enabled.' });
