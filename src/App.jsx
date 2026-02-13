@@ -77,7 +77,9 @@ function App() {
   // When an activity is selected, load its full data and initialize state
   const handleSelectActivitySlug = async (slug) => {
     try {
-      const activity = await fetch(`/api/activities/${slug}`).then(r => r.json());
+      // Check if full activity data is already in the list (from upload-pdf)
+      const cached = activitiesList.find(a => a.slug === slug && a.characterPositions);
+      const activity = cached || await fetch(`/api/activities/${slug}`).then(r => r.json());
       setSelectedActivity(activity);
 
       // Initialize from activity data

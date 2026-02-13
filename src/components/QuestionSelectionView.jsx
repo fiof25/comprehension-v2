@@ -86,12 +86,12 @@ const QuestionSelectionView = ({ activities: activitiesProp, onQuestionSelect, o
               >
                 <div className="flex flex-col gap-3 flex-1 min-w-0">
                   <p className="text-xl font-medium font-karla text-black leading-tight">
-                    {a.questionText}
+                    {a.questionText || a.question?.text}
                   </p>
                   <span className="border border-[#0c8e3f] text-[#0c8e3f] text-sm font-mulish px-3 py-0.5 rounded w-fit">
-                    {a.tag}
+                    {a.tag || a.question?.tag}
                   </span>
-                  <span className="text-base font-mulish text-black/70">Asked by {a.askedBy}</span>
+                  <span className="text-base font-mulish text-black/70">Asked by {a.askedBy || a.question?.askedBy}</span>
                 </div>
 
                 <button

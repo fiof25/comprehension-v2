@@ -203,17 +203,7 @@ export default async function handler(req, res) {
             return res.status(500).json({ error: 'Failed to generate any activities' });
         }
 
-        const summaries = activities.map(a => ({
-            slug: a.slug,
-            title: a.title,
-            thumbnail: a.thumbnail,
-            topics: a.topics,
-            questionText: a.question.text,
-            tag: a.question.tag,
-            askedBy: a.question.askedBy,
-        }));
-
-        res.json({ activities: summaries, pdfPath });
+        res.json({ activities, pdfPath });
     } catch (error) {
         console.error('Error in upload-pdf:', error);
         res.status(500).json({ error: error.message || 'Failed to process PDF' });

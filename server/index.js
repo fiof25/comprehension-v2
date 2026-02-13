@@ -283,19 +283,8 @@ app.post('/api/upload-pdf', upload.single('pdf'), async (req, res) => {
             return res.status(500).json({ error: 'Failed to generate any activities from the PDF' });
         }
 
-        // Return summaries matching the format used by GET /api/activities
-        const summaries = activities.map(a => ({
-            slug: a.slug,
-            title: a.title,
-            thumbnail: a.thumbnail,
-            topics: a.topics,
-            questionText: a.question.text,
-            tag: a.question.tag,
-            askedBy: a.question.askedBy,
-        }));
-
-        console.log(`[upload-pdf] Success! Generated ${summaries.length} activities`);
-        res.json({ activities: summaries, pdfPath });
+        console.log(`[upload-pdf] Success! Generated ${activities.length} activities`);
+        res.json({ activities, pdfPath });
     } catch (error) {
         console.error('[upload-pdf] Error:', error.message || error);
         res.status(500).json({ error: 'Failed to process PDF: ' + (error.message || 'Unknown error') });
