@@ -1,4 +1,28 @@
 import React, { useRef, useEffect, useState } from 'react';
+import * as pdfjsLib from 'pdfjs-dist';
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+
+async function generatePdfThumbnail(file) {
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: 1 });
+    const scale = 400 / viewport.width;
+    const scaledViewport = page.getViewport({ scale });
+    const canvas = document.createElement('canvas');
+    canvas.width = scaledViewport.width;
+    canvas.height = scaledViewport.height;
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport: scaledViewport }).promise;
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => resolve(blob ? URL.createObjectURL(blob) : null), 'image/jpeg', 0.85);
+    });
+  } catch {
+    return null;
+  }
+}
 
 const HomePage = ({ onStartLearning, onSelectActivity }) => {
   const fileInputRef = useRef(null);
@@ -48,6 +72,11 @@ const HomePage = ({ onStartLearning, onSelectActivity }) => {
       }
       // Create a blob URL so the PDF viewer can display the uploaded file
       const pdfBlobUrl = URL.createObjectURL(file);
+      // Generate a thumbnail from the first page of the PDF
+      const thumbUrl = await generatePdfThumbnail(file);
+      if (thumbUrl) {
+        data.activities.forEach(a => { a.thumbnail = thumbUrl; });
+      }
       onSelectActivity(data.activities, pdfBlobUrl);
     } catch (err) {
       console.error('Upload error:', err);
