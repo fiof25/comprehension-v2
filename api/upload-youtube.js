@@ -125,7 +125,9 @@ export default async function handler(req, res) {
                 throw new Error('No caption tracks available');
             }
             const enTrack = tracks.find(t => t.languageCode === 'en') || tracks[0];
-            const captionRes = await fetch(enTrack.baseUrl);
+            const captionRes = await fetch(enTrack.baseUrl, {
+                headers: { 'User-Agent': 'com.google.android.youtube/19.29.37 (Linux; U; Android 11) gzip' },
+            });
             const xml = await captionRes.text();
             const segments = [...xml.matchAll(/<p[^>]*>(.*?)<\/p>/gs)];
             transcript = segments.map(m => m[1]
