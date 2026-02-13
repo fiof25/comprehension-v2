@@ -4,13 +4,17 @@
   "framework": "vite",
   "functions": {
     "api/*.js": {
-      "includeFiles": "characters/**/*.md,activities/TEMPLATE.md"
+      "includeFiles": "server/**/*.js,characters/**/*.md,activities/**/*.md",
+      "maxDuration": 60
     }
   },
   "rewrites": [
+    { "source": "/api/activities/:slug", "destination": "/api/activity?slug=:slug" },
+    { "source": "/api/activities", "destination": "/api/activities" },
     { "source": "/api/chat", "destination": "/api/chat" },
     { "source": "/api/check-answer", "destination": "/api/check-answer" },
     { "source": "/api/upload-pdf", "destination": "/api/upload-pdf" },
-    { "source": "/api/reset-session", "destination": "/api/reset-session" }
+    { "source": "/api/reset-session", "destination": "/api/reset-session" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }

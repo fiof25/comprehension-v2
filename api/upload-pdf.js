@@ -78,17 +78,34 @@ Output ONLY the markdown file content, nothing else.`;
     return result.response.text().replace(/```markdown|```/g, '').trim();
 }
 
-// Vercel serverless functions don't support multer — parse multipart manually
+// Vercel serverless: disable body parser so we get raw body
 export const config = {
     api: {
         bodyParser: false,
     },
 };
 
-async function parseMultipartForm(req) {
-    const { default: Busboy } = await import('busboy');
+// Collect raw body from request (works on both Vercel and Node streams)
+function getRawBody(req) {
     return new Promise((resolve, reject) => {
-        const busboy = Busboy({ headers: req.headers });
+        // If body is already buffered (Vercel sometimes does this)
+        if (req.body && Buffer.isBuffer(req.body)) {
+            return resolve(req.body);
+        }
+        const chunks = [];
+        req.on('data', (chunk) => chunks.push(chunk));
+        req.on('end', () => resolve(Buffer.concat(chunks)));
+        req.on('error', reject);
+    });
+}
+
+// Parse multipart form data from a raw buffer
+async function parseMultipartFromBuffer(rawBody, contentType) {
+    const { default: Busboy } = await import('busboy');
+    const { Readable } = await import('stream');
+
+    return new Promise((resolve, reject) => {
+        const busboy = Busboy({ headers: { 'content-type': contentType } });
         let fileBuffer = null;
         let fileName = '';
 
@@ -105,7 +122,10 @@ async function parseMultipartForm(req) {
         });
 
         busboy.on('error', reject);
-        req.pipe(busboy);
+
+        // Feed the raw buffer into busboy as a readable stream
+        const stream = Readable.from(rawBody);
+        stream.pipe(busboy);
     });
 }
 
@@ -115,14 +135,22 @@ export default async function handler(req, res) {
     }
 
     try {
-        const file = await parseMultipartForm(req);
+        // Get raw body buffer
+        const rawBody = await getRawBody(req);
+        const contentType = req.headers['content-type'] || '';
+
+        if (!contentType.includes('multipart/form-data')) {
+            return res.status(400).json({ error: 'Expected multipart/form-data' });
+        }
+
+        const file = await parseMultipartFromBuffer(rawBody, contentType);
 
         // 1. Generate slug from filename
         const originalName = path.basename(file.originalname, '.pdf');
         const slug = originalName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
         const pdfPath = `/assets/${slug}.pdf`;
 
-        // 2. Save PDF (in Vercel this writes to /tmp — for production use a storage service)
+        // 2. Save PDF to /tmp on Vercel (or public/assets locally)
         const assetsDir = path.join(__dirname, '..', 'public', 'assets');
         if (fs.existsSync(assetsDir)) {
             fs.writeFileSync(path.join(assetsDir, `${slug}.pdf`), file.buffer);
@@ -153,8 +181,17 @@ export default async function handler(req, res) {
 
             const generatedMd = results[i].value;
             const activitySlug = `${slug}-q${i + 1}-${typesToGenerate[i].type}`;
-            const filePath = path.join(__dirname, '..', 'activities', `${activitySlug}.md`);
-            fs.writeFileSync(filePath, generatedMd, 'utf8');
+
+            // Write to activities dir (works locally, may be read-only on Vercel)
+            const activitiesDir = path.join(__dirname, '..', 'activities');
+            const filePath = path.join(activitiesDir, `${activitySlug}.md`);
+            try {
+                fs.writeFileSync(filePath, generatedMd, 'utf8');
+            } catch (writeErr) {
+                // On Vercel, write to /tmp instead
+                const tmpPath = path.join('/tmp', `${activitySlug}.md`);
+                fs.writeFileSync(tmpPath, generatedMd, 'utf8');
+            }
 
             try {
                 const activity = loadActivity(activitySlug);
@@ -181,6 +218,6 @@ export default async function handler(req, res) {
         res.json({ activities: summaries, pdfPath });
     } catch (error) {
         console.error('Error in upload-pdf:', error);
-        res.status(500).json({ error: 'Failed to process PDF' });
+        res.status(500).json({ error: error.message || 'Failed to process PDF' });
     }
 }
