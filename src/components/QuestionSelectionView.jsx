@@ -42,7 +42,7 @@ const QuestionSelectionView = ({ activities: activitiesProp, onQuestionSelect, o
           <div className="flex flex-col gap-2">
             <div className="aspect-[384/204] w-full rounded overflow-hidden">
               <img
-                src={fileInfo.thumbnail}
+                src={fileInfo.thumbnail || '/assets/placeholder.jpg'}
                 alt={fileInfo.title}
                 className="w-full h-full object-cover"
               />
