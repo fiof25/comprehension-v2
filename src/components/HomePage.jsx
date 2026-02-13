@@ -46,7 +46,9 @@ const HomePage = ({ onStartLearning, onSelectActivity }) => {
       if (!data.activities || data.activities.length === 0) {
         throw new Error('No activities were generated. Please try a different PDF.');
       }
-      onSelectActivity(data.activities);
+      // Create a blob URL so the PDF viewer can display the uploaded file
+      const pdfBlobUrl = URL.createObjectURL(file);
+      onSelectActivity(data.activities, pdfBlobUrl);
     } catch (err) {
       console.error('Upload error:', err);
       setUploadError(err.message || 'Failed to process PDF. Please try again.');

@@ -63,6 +63,7 @@ function App() {
   // Activity-driven state
   const [activitiesList, setActivitiesList] = useState([]); // list of activity summaries for question selection
   const [selectedActivity, setSelectedActivity] = useState(null); // full activity object for the current session
+  const [uploadedPdfUrl, setUploadedPdfUrl] = useState(null); // blob URL for user-uploaded PDF
 
   const [checklist, setChecklist] = useState([
     { id: 'analogy', label: 'Use an analogy in your explanation', completed: false },
@@ -214,8 +215,9 @@ function App() {
       return (
         <HomePage
           onStartLearning={() => setActiveStep('loading')}
-          onSelectActivity={(activities) => {
+          onSelectActivity={(activities, pdfBlobUrl) => {
             setActivitiesList(activities);
+            if (pdfBlobUrl) setUploadedPdfUrl(pdfBlobUrl);
             setActiveStep('loading');
           }}
         />
@@ -396,7 +398,7 @@ function App() {
             {/* PDF viewer */}
             <div className="flex-1 min-h-0 bg-[#525659]">
               <iframe
-                src={`${selectedActivity?.pdf || '/assets/Drought_Reading.pdf'}#toolbar=0&navpanes=0&view=FitH`}
+                src={`${uploadedPdfUrl || selectedActivity?.pdf || '/assets/Drought_Reading.pdf'}#toolbar=0&navpanes=0&view=FitH`}
                 title="Reading Content"
                 className="w-full h-full border-none"
               />
