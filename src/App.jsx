@@ -208,7 +208,7 @@ function App() {
     }
   }, [activeStep]);
 
-  const questionText = selectedActivity?.question?.text || '';
+  const questionText = selectedActivity?.question?.text || selectedActivity?.questionText || '';
 
   const renderContent = () => {
     if (activeStep === 'home') {
