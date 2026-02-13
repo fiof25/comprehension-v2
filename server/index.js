@@ -11,7 +11,8 @@ const require = createRequire(import.meta.url);
 const pdfParse = require('pdf-parse');
 import { JAMIE_PROMPT, THOMAS_PROMPT, COLLABORATIVE_SYSTEM_PROMPT } from './characters.js';
 import { DISCUSSION_ORCHESTRATOR_PROMPT } from './agents/discussionOrchestrator.js';
-import { loadAllActivities, loadActivity } from './activityParser.js';
+import { loadAllActivities, loadActivity, parseActivityFromString } from './activityParser.js';
+import { YoutubeTranscript } from 'youtube-transcript';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -288,6 +289,109 @@ app.post('/api/upload-pdf', upload.single('pdf'), async (req, res) => {
     } catch (error) {
         console.error('[upload-pdf] Error:', error.message || error);
         res.status(500).json({ error: 'Failed to process PDF: ' + (error.message || 'Unknown error') });
+    }
+});
+
+// --- Upload YouTube and generate activities ---
+
+function extractVideoId(url) {
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
+        /^([a-zA-Z0-9_-]{11})$/,
+    ];
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
+    }
+    return null;
+}
+
+app.post('/api/upload-youtube', async (req, res) => {
+    const { url } = req.body;
+    console.log('[upload-youtube] Request received, url:', url);
+
+    if (!url) {
+        return res.status(400).json({ error: 'YouTube URL is required' });
+    }
+
+    const videoId = extractVideoId(url);
+    if (!videoId) {
+        return res.status(400).json({ error: 'Invalid YouTube URL.' });
+    }
+
+    try {
+        // 1. Fetch transcript
+        let transcript;
+        try {
+            const segments = await YoutubeTranscript.fetchTranscript(videoId);
+            transcript = segments.map(s => s.text).join(' ');
+        } catch (err) {
+            console.error('[upload-youtube] Transcript error:', err);
+            return res.status(400).json({ error: 'Could not fetch transcript. The video may not have captions enabled.' });
+        }
+
+        if (!transcript || transcript.trim().length < 50) {
+            return res.status(400).json({ error: 'Transcript is too short.' });
+        }
+
+        // 2. Get video title from oEmbed
+        let title = 'YouTube Video';
+        try {
+            const oembedRes = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+            if (oembedRes.ok) {
+                const oembed = await oembedRes.json();
+                title = oembed.title || title;
+            }
+        } catch { /* fallback */ }
+
+        // 3. Build URLs
+        const embedUrl = `https://www.youtube.com/embed/${videoId}`;
+        const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+
+        // 4. Generate activities
+        console.log('[upload-youtube] Generating 3 activities for:', title);
+        const typesToGenerate = QUESTION_TYPES.slice(0, 3);
+        const results = await Promise.allSettled(
+            typesToGenerate.map(qt => generateActivityFromText(transcript, title, embedUrl, qt.type))
+        );
+
+        const activities = [];
+        const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        for (let i = 0; i < results.length; i++) {
+            if (results[i].status !== 'fulfilled') {
+                console.error(`[upload-youtube] Failed to generate ${typesToGenerate[i].type}:`, results[i].reason?.message);
+                continue;
+            }
+
+            const generatedMd = results[i].value;
+            const activitySlug = `${slug}-q${i + 1}-${typesToGenerate[i].type}`;
+
+            try {
+                const activity = parseActivityFromString(generatedMd, activitySlug);
+                if (activity) {
+                    activity.thumbnail = thumbnailUrl;
+                    activities.push(activity);
+                }
+            } catch (parseErr) {
+                console.error(`[upload-youtube] Failed to parse ${activitySlug}:`, parseErr.message);
+            }
+
+            // Also persist to disk for local dev
+            try {
+                const filePath = path.join(__dirname, '..', 'activities', `${activitySlug}.md`);
+                fs.writeFileSync(filePath, generatedMd, 'utf8');
+            } catch { /* ignore */ }
+        }
+
+        if (activities.length === 0) {
+            return res.status(500).json({ error: 'Failed to generate any activities from the video' });
+        }
+
+        console.log(`[upload-youtube] Success! Generated ${activities.length} activities`);
+        res.json({ activities, youtubeEmbedUrl: embedUrl, thumbnailUrl });
+    } catch (error) {
+        console.error('[upload-youtube] Error:', error.message || error);
+        res.status(500).json({ error: error.message || 'Failed to process YouTube video' });
     }
 });
 

@@ -63,7 +63,7 @@ function App() {
   // Activity-driven state
   const [activitiesList, setActivitiesList] = useState([]); // list of activity summaries for question selection
   const [selectedActivity, setSelectedActivity] = useState(null); // full activity object for the current session
-  const [uploadedPdfUrl, setUploadedPdfUrl] = useState(null); // blob URL for user-uploaded PDF
+  const [uploadedContentUrl, setUploadedContentUrl] = useState(null); // blob URL for PDF or YouTube embed URL
 
   const [checklist, setChecklist] = useState([
     { id: 'analogy', label: 'Use an analogy in your explanation', completed: false },
@@ -215,9 +215,9 @@ function App() {
       return (
         <HomePage
           onStartLearning={() => setActiveStep('loading')}
-          onSelectActivity={(activities, pdfBlobUrl) => {
+          onSelectActivity={(activities, contentUrl) => {
             setActivitiesList(activities);
-            if (pdfBlobUrl) setUploadedPdfUrl(pdfBlobUrl);
+            if (contentUrl) setUploadedContentUrl(contentUrl);
             setActiveStep('loading');
           }}
         />
@@ -396,13 +396,20 @@ function App() {
               </div>
             </div>
 
-            {/* PDF viewer */}
+            {/* Content viewer (PDF or YouTube) */}
             <div className="flex-1 min-h-0 bg-[#525659]">
-              <iframe
-                src={`${uploadedPdfUrl || selectedActivity?.pdf || '/assets/Drought_Reading.pdf'}#toolbar=0&navpanes=0&view=FitH`}
-                title="Reading Content"
-                className="w-full h-full border-none"
-              />
+              {(() => {
+                const contentSrc = uploadedContentUrl || selectedActivity?.pdf || '/assets/Drought_Reading.pdf';
+                const isYoutube = contentSrc.includes('youtube.com/embed');
+                return (
+                  <iframe
+                    src={isYoutube ? contentSrc : `${contentSrc}#toolbar=0&navpanes=0&view=FitH`}
+                    title="Reading Content"
+                    className="w-full h-full border-none"
+                    {...(isYoutube ? { allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture', allowFullScreen: true } : {})}
+                  />
+                );
+              })()}
             </div>
           </div>
         </div>
